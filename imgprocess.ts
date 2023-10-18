@@ -1,16 +1,11 @@
 import Compressor from 'compressorjs';
-import axios from 'axios';
 
 // Example usage
-export function compressImage(imageData: Uint8Array): Uint8Array {
-    return imageData;
-} 
-
-export async function compressFile(file: File): Prom {
+export async function compressFile(file: File, ratio: number): Promise<Uint8Array> {
 
     return new Promise((resolve, reject) => {
         new Compressor(file, {
-            quality: 0.05,
+            quality: ratio,
         
             async success(result) {
                 try{

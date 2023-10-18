@@ -2,28 +2,20 @@ import {
 	App,  
 	Editor, 
 	MarkdownView,
-	MarkdownFileInfo, 
 	Notice,
 	Plugin, 
 	PluginSettingTab, 
 	Setting,
-	TFile,
-	TFolder} from 'obsidian';
+	TFile} from 'obsidian';
 
-import axios from 'axios';
-import Compressor  from 'compressorjs';
-
-import {compressImage, compressFile} from './imgprocess';
-
-
-
+import {compressFile} from './imgprocess';
 
 interface CompressSettings {
-	compressRatio: string;
+	compressRatio: number;
 }
 
 const DEFAULT_SETTINGS: CompressSettings = {
-	compressRatio: "0.5"
+	compressRatio: 0.5
 }
 
 export default class Compress extends Plugin {
@@ -70,66 +62,26 @@ export default class Compress extends Plugin {
 		
 		if (types && types.includes("Files")){
 
-			const imgFiles = Array.from(ev.clipboardData.files);
-			const img = imgFiles.find(file => file.type.startsWith("image/"));
+			const files: Array<File> = Array.from(ev.clipboardData.files);
+			const imgFile: File | undefined = files.find(file => file.type.startsWith("image/"));
 			
-			if (img){
+			if (imgFile){
 				ev.preventDefault();
 				
-				// Get file name
-				const fileType = img.type.substring(6);
+				// Get output file name and name
+				const fileType: string = imgFile.type.substring(6);
 				const imgFileName: string = `comp-${Date.now()}.${fileType}`;
-				// console.log("Image Found! Type: " + img.type);
 
-				// Grab Uint8Array from image file
-				const imgBuffer = await img.arrayBuffer();
-				const imgData = new Uint8Array(imgBuffer);
-				console.log("old bytelength", imgData.byteLength);
-
-				// Get dims
-				const dims = await this.getImageDims(img);
-
-				// console.log(typeof img);
-				// compressFile(img);
-				
-				const imgArray : Uint8Array = await compressFile(img);
-				console.log("new bytelength", imgArray.byteLength);
-
-
-
-				// console.log("Size before compressing:", imgData.length);				
-				const compressedImg: Uint8Array = compressImage(imgData);
-				// console.log("Size after compressing:", compressedImg.length);
+				// Call compression function
+				const imgArray: Uint8Array = await compressFile(imgFile, this.settings.compressRatio as number);
 				
 				// Save image and insert link
 				this.saveImage(imgFileName, imgArray);
-				this.saveImage("old_" + imgFileName, imgData);
 				const imgLink = `![[${imgFileName}]]`;
 				editor.replaceSelection(imgLink);
 			}			
 		}
 		console.log("Fn finished");
-	}
-
-	async getImageDims(img: File):  Promise<{width: number; height: number}>{
-
-		const img4dim = new Image();
-		const url = URL.createObjectURL(img);
-
-		// Set the Image source to the clipboard image
-		img4dim.src = url;
-
-		// Wait for the image to load
-		await new Promise((resolve) => {
-			img4dim.onload = resolve;
-		});
-
-        // Get the dimensions
-        const width = img4dim.width;
-        const height = img4dim.height;
-
-        // Return the dimensions
-        return { width, height };
 	}
 
 	async saveImage(fileName: string, imageData: Uint8Array): Promise<void> {
@@ -159,16 +111,19 @@ class CompressSettingsTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		new Setting(containerEl)
-			.setName('Compression Ratio')
-			.setDesc('Compression Ratio')
-			.addText(text => text
-				.setPlaceholder('Compression Ratio')
-				.setValue(this.plugin.settings.compressRatio)
-				.onChange(async (value: string) => {
-					this.plugin.settings.compressRatio = value;
-					await this.plugin.saveSettings();
-				})); 
+
+	new Setting(containerEl)
+		.setName('Compression Ratio')
+		.setDesc('Compression Ratio (0 to 1)')
+		.addSlider((slider) => slider
+			.setValue(this.plugin.settings.compressRatio)
+			.setLimits(0, 1, 0.1)
+			.onChange(async (value) => {
+				this.plugin.settings.compressRatio = value;
+				await this.plugin.saveSettings();
+			})
+			.setDynamicTooltip()
+		);
 	}
 }
  
