@@ -10,7 +10,12 @@ import {
 	TFile,
 	TFolder} from 'obsidian';
 
-import compressImage from './imgprocess';
+import axios from 'axios';
+import Compressor  from 'compressorjs';
+
+import {compressImage, compressFile} from './imgprocess';
+
+
 
 
 interface CompressSettings {
@@ -71,54 +76,72 @@ export default class Compress extends Plugin {
 			if (img){
 				ev.preventDefault();
 				
-				let fileData = "";
-				console.log("Image Found! Type: " + img.type);
+				// Get file name
+				const fileType = img.type.substring(6);
+				const imgFileName: string = `comp-${Date.now()}.${fileType}`;
+				// console.log("Image Found! Type: " + img.type);
+
+				// Grab Uint8Array from image file
+				const imgBuffer = await img.arrayBuffer();
+				const imgData = new Uint8Array(imgBuffer);
+				console.log("old bytelength", imgData.byteLength);
+
+				// Get dims
+				const dims = await this.getImageDims(img);
+
+				// console.log(typeof img);
+				// compressFile(img);
 				
-				const reader = new FileReader();
-				reader.onloadend = () => {
-					let fileData = reader.result as string;
+				const imgArray : Uint8Array = await compressFile(img);
+				console.log("new bytelength", imgArray.byteLength);
 
-					console.log("READ DATA: ", fileData)
 
-					const randomVal = Math.floor(Math.random() * 1000);
-					let imgFileName: string = `temp-image-name-${randomVal}.png`;
 
-					this.saveImage(imgFileName, fileData);
-
-					// call compressImage
-					const imgLink = `![[${imgFileName}]]`;
-					editor.replaceSelection(imgLink);
-				};
+				// console.log("Size before compressing:", imgData.length);				
+				const compressedImg: Uint8Array = compressImage(imgData);
+				// console.log("Size after compressing:", compressedImg.length);
 				
-				reader.readAsText(img);
-				
-				// const randomVal = Math.floor(Math.random() * 100);
-				// let imgFileName: string = `temp-image-name-${randomVal}.png`;
-
-				// console.log(`${imgFileName} and ${fileData}`);
-				// this.saveImage(imgFileName, fileData);
-
-				// // call compressImage
-				// const imgLink = `![[${imgFileName}]]`;
-				// editor.replaceSelection(imgLink);
+				// Save image and insert link
+				this.saveImage(imgFileName, imgArray);
+				this.saveImage("old_" + imgFileName, imgData);
+				const imgLink = `![[${imgFileName}]]`;
+				editor.replaceSelection(imgLink);
 			}			
 		}
 		console.log("Fn finished");
 	}
 
-	async saveImage(fileName: string, imageData: string): Promise<void> {
-		//get current folder path
+	async getImageDims(img: File):  Promise<{width: number; height: number}>{
+
+		const img4dim = new Image();
+		const url = URL.createObjectURL(img);
+
+		// Set the Image source to the clipboard image
+		img4dim.src = url;
+
+		// Wait for the image to load
+		await new Promise((resolve) => {
+			img4dim.onload = resolve;
+		});
+
+        // Get the dimensions
+        const width = img4dim.width;
+        const height = img4dim.height;
+
+        // Return the dimensions
+        return { width, height };
+	}
+
+	async saveImage(fileName: string, imageData: Uint8Array): Promise<void> {
 		const activeFile: TFile | null = this.app.workspace.getActiveFile();
 
 		if (!activeFile || !activeFile.parent) {
-			// throw error
 			new Notice("No active file");
 			return;
 		}
 
 		const currentFolderPath: string | null = activeFile.parent.path;
-		const arrayBuffer = new TextEncoder().encode(imageData).buffer;
-		await this.app.vault.createBinary(`${currentFolderPath}/${fileName}`, arrayBuffer);
+		await this.app.vault.createBinary(`${currentFolderPath}/${fileName}`, imageData);
 	}
 
 }
