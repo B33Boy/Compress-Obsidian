@@ -58,7 +58,7 @@ export default class Compress extends Plugin {
 	{
 		if (ev.defaultPrevented || !ev.clipboardData) return;
 
-		let types = ev.clipboardData.types;
+		const types = ev.clipboardData.types;
 		
 		if (types && types.includes("Files")){
 
@@ -70,7 +70,7 @@ export default class Compress extends Plugin {
 				
 				// Get output file name and name
 				const fileType: string = imgFile.type.substring(6);
-				const imgFileName: string = `comp-${Date.now()}.${fileType}`;
+				const imgFileName = `comp-${Date.now()}.${fileType}`;
 
 				// Call compression function
 				const imgArray: Uint8Array = await compressFile(imgFile, this.settings.compressRatio as number);
