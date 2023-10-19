@@ -1,11 +1,11 @@
 {
 	"id": "compress-obsidian",
 	"name": "Compress",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
 	"description": "This is an Obsidian plugin to compress images on-paste.",
 	"author": "B33boy",
 	"authorUrl": "https://obsidian.md",
 	"fundingUrl": "https://obsidian.md/pricing",
-	"isDesktopOnly": false
+	"isDesktopOnly": true
 }
